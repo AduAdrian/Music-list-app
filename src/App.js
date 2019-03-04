@@ -8,11 +8,12 @@ import axios from 'axios';
 
 const API_URL = 'https://ws.audioscrobbler.com/2.0/?limit=5&format=json&method=artist.search&api_key=' + process.env.REACT_APP_LASTFM_APPKEY;
 
-const isEmplt = (str) => str.length === 0;
+// const isEmplt = (str) => str.length === 0;
 class App extends Component {
 state = {
 searchTerm: '',
 artists: []
+
 }
 onTextChange = (event) => {
 const value = event.target.value;
@@ -26,7 +27,7 @@ const request = API_URL + '&artist=' + terms;
 console.log(request);
 
 axios.get(request).then((response) => {
-this.setState({ artists: response.data.results.artistmatches.artist});
+this.setState({ artists: response.data.results.artistmatches.artist });
 })
 }
 
@@ -43,7 +44,7 @@ return (
 <AppBar position="static" color="primary">
 <Toolbar>
 <Typography variant="h6" color="inherit">
-Photos
+Last Fm search 
 </Typography>
 <TextField 
 placeholder="Search on Spotify" 
@@ -59,8 +60,10 @@ disabled={this.state.searchTerm.length === 0}
 </AppBar>
 </header>
 <ul>
-{this.state.artists.map((artist) => {
-return <li><span>{artist.name}</span></li>
+{this.state.artists.map((artist, i ) => {
+return <li key ={i}><span >artist name :{artist.name}   Views: {artist.listeners} </span></li>
+
+
 })}
 </ul>
 
