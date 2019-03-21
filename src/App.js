@@ -1,147 +1,142 @@
-import React, { Component } from "react";
-import "./App.css";
-import AppBar from "@material-ui/core/AppBar";
-import Toolbar from "@material-ui/core/Toolbar";
-import Typography from "@material-ui/core/Typography";
+import React, { Component } from 'react';
+import AppBar from '@material-ui/core/AppBar';
+import Toolbar from '@material-ui/core/Toolbar';
+import Typography from '@material-ui/core/Typography';
+import { getArtists } from './services/api';
+
 import {
   TextField,
   Button,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  Avatar,
-  Card,
-  CardContent
-} from "@material-ui/core";
-import axios from "axios";
+  List
+} from '@material-ui/core';
 
-const API_URL =
-  "https://ws.audioscrobbler.com/2.0/?limit=5&format=json&method=artist.search&api_key=" +
-  process.env.REACT_APP_LASTFM_APPKEY;
+import { ArtistCard } from './components/ArtistCard';
+import { SearchResult } from './components/SearchResult';
 
-const isEmpty = str => str.length === 0;
+import './App.css';
+import { get } from 'https';
+
+const isEmpty = (str) => str.length === 0;
 class App extends Component {
-  state = {
-    searchTerm: "",
-    artists: [],
-    saveArtists: []
-  };
 
-  componentDidMount  () {
-    const saveArtists = localStorage.getItem('savedArtists')
-    if(saveArtists){
-        this.setState({saveArtists: JSON.parse(saveArtists)})
+
+      state = {
+      searchTerm: '',
+      savedArtists: [],
+      rate: ''
+    }
+  
+
+  componentDidMount() {
+    const existing = localStorage.getItem('savedArtists')
+    const rate = localStorage.getItem('rate')
+    if (existing || rate) {
+      this.setState({ savedArtists: JSON.parse(existing) })
+      this.setState({ rate: JSON.stringify(rate) })
     }
   }
-  onTextChange = event => {
+  handleChangeRate = (state) => {
+    this.setState({rate: state})
+  }
+
+  onTextChange = (event) => {
     const value = event.target.value;
 
     this.setState({ searchTerm: value });
-  };
+  }
 
-  search = terms => {
-    const request = API_URL + "&artist=" + terms;
+  search = async (terms) => {
 
-    console.log(request);
-
-    axios.get(request).then(response => {
-      const results = response.data.results;
-      const artists = results.artistmatches.artist.map(artist => {
-        const avatarImage = artist.image.find(image => image.size === "medium");
-        const imageUrl = avatarImage["#text"];
-        return { ...artist, avatar: imageUrl };
-      });
-
-      this.setState({ artists });
-    });
-  };
+    const artists = await getArtists(terms);
+    this.setState({ artists: artists })
+  }
 
   onSearchClick = () => {
     this.search(this.state.searchTerm);
-  };
+  }
+
   clearSearch = () => {
     this.setState({
-      searchTerm: "",
-      artist: []
-    });
-  };
-  onResultClick = artist => {
+      searchTerm: '',
+      artists: []
+    })
+  }
+  updateRate = (newRate) => {
+    this.setState({rate:newRate})
+    localStorage.localStorage.setItem('rate',JSON.stringify(newRate))
+  }
+  updateArtists = (newArtists) => {
+    this.setState({ savedArtists: newArtists })
+    localStorage.setItem('savedArtists', JSON.stringify(newArtists));
+  }
+
+  deleteArtist = (artist) => {
+    const result = this.state.savedArtists.filter(item => item.name !== artist.name);
+    this.updateArtists(result);
+  }
+  onclickrating = (newRate) => {
+    const rate = this.state.rate;
+    this.rate =newRate
+    this.updateRate(rate)
+    console.log(rate);
+  }
+
+  onResultClick = (artist) => {
     this.clearSearch();
-    const saveArtists = this.state.saveArtists;
-    saveArtists.push(artist)
-    this.setState({ saveArtists :saveArtists})
-    localStorage.setItem('savedArtists', JSON .stringify(saveArtists))
-  };
+    const savedArtists = this.state.savedArtists;
+    savedArtists.push(artist);
+    this.updateArtists(savedArtists);
+  }
 
   render() {
+    const results = this.state.artists || [];
     return (
       <div className="App">
         <header className="App-header">
           <AppBar position="static" color="primary">
-            <Toolbar>
+            <Toolbar className="search-bar">
               <Typography variant="h6" color="inherit">
-                Last Fm search
+                Photos
               </Typography>
               <TextField
-                placeholder="Search on LastFm"
+                placeholder="Search on Last.fm"
+                className="search-input"
                 onChange={this.onTextChange}
                 value={this.state.searchTerm}
               />
               <Button
                 onClick={this.onSearchClick}
-                disabled={this.state.searchTerm.length === 0}
                 variant="contained"
+                color="secondary"
+                disabled={isEmpty(this.state.searchTerm)}
               >
                 Search
               </Button>
               {!isEmpty(this.state.searchTerm) && (
                 <Button
-                  onClick={clearSearch => {
-                    this.setState({ searchTerm: "" });
-                  }}
+                  onClick={this.clearSearch}
                   variant="contained"
                 >
-                  Clear Search
-                </Button>
-              )}
+                  Clear
+                </Button>)
+              }
             </Toolbar>
           </AppBar>
         </header>
-        <List>
-          {this.state.artists.map((artist, i) => {
-            return (
-              <ListItem
-                button
-                key={i}
-                onClick={() => this.onResultClick(artist)}
-              >
-                <ListItemAvatar>
-                  <Avatar src={artist.avatar} alt={artist.name} />
-                </ListItemAvatar>
-                <ListItemText primary={artist.name} />
-                <Button
-                  variant="outlined"
-                  color="secondary"
-                  size="small"
-                  className="add-button"
-                >
-                  Add to favorite
-                </Button>
-              </ListItem>
-            );
-          })}
+
+        <List className="search-results">
+          {
+            results.map((artist, index) => {
+              return <SearchResult key={index} artist={artist} onResultClick={this.onResultClick} />
+            })
+          }
         </List>
         <div className="artist-container">
-          {this.state.saveArtists.map(artist => {
-            return (
-              <Card>
-                <CardContent>
-                {artist.name}
-                </CardContent>
-              </Card>
-            );
-          })}
+          {
+            this.state.savedArtists.map((artist, index) => {
+              return <ArtistCard artist={artist} key={index} rating={this.state.rate} deleteArtist={this.deleteArtist} onChangeRating={this.handleChangeRate}  />
+            })
+          }
         </div>
       </div>
     );
@@ -149,6 +144,39 @@ class App extends Component {
 }
 
 export default App;
-//Homework
-// Afisare user " song not found" in caz de nu gaseste nici un rezultat
 
+
+
+
+//Filter, ForEach , map, reduce !Important .
+
+//psd reporduct site 
+//display , visibility  dif between it ., arrow functions .
+// display in-line , padding margin nu se aplica 
+// display in line block se aplica box sizing 
+
+//**CV 
+//1.ce scriem ? 
+//Orice lucru pus pe cv trebuie sa stii bine ce scrii , in caz de interviatorul stiie foarte bine aceea chestie , pui doar ce stii sa faci foarte bine ! 
+//Oameni cu care dai interviu , au autoritate totala asupra deciziei !
+//Ex  stuidii ' am terminat cursul de front end iasi bla bla '. Create react app "CRUD(Create read update  delete)**", last fm search for artists , rate etc .
+//Tehnology used , react axios , material ui etc , localstorage
+//Your skill , html css , javascript , location etc ,
+//Your work , last fm app *must work **
+//Pages.github.com** Postam aplicatia pe git ca si pagina web 
+////// punem link in cv
+//Punem accent pe toate chestiile de mai sus
+//Keep it short  1-2 pages .
+//Fara stilizare prin cv  typeos.
+//Fara culori fancy , alb negru , foarte putina culoare 
+//Metodology , scrum agile , waterfall
+//pre intv, preselectie in functie de ce au nevoie .
+//telefon + mail + adressa simpla "Suceava" +skype id ( microsoft account);
+//Raman 50 pers ,care vor fi contactate
+//Interviu telefonic ,  raspunsuri decente 
+//Intrebari eliminatorii !**
+//2 intv
+//
+//
+//
+//
